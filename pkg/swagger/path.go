@@ -138,3 +138,8 @@ type Response struct {
 // Responses
 //  fixed key would be "default",other key should be http status code like "200"
 type Responses map[string]Response
+
+type ResponseOrRef struct {
+	*Reference `json:",omitempty"`
+	*Response  `json:",omitempty"`
+}
