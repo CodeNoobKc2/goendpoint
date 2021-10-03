@@ -1,5 +1,10 @@
 package swagger
 
+type SchemaOrRef struct {
+	*Schema    `json:",omitempty"`
+	*Reference `json:",omitempty"`
+}
+
 // Schema oas schema object
 //  extension fields are currently not supported
 //  discriminator not supported
