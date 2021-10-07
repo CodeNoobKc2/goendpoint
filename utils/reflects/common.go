@@ -20,7 +20,7 @@ func Underlying(v reflect.Value, recursive bool) reflect.Value {
 func IsNumber(t reflect.Type) bool {
 	return t.Kind() == reflect.Int || t.Kind() == reflect.Int8 || t.Kind() == reflect.Int32 || t.Kind() == reflect.Int64 ||
 		t.Kind() == reflect.Uint || t.Kind() == reflect.Uint8 || t.Kind() == reflect.Uint16 || t.Kind() == reflect.Uint32 || t.Kind() == reflect.Uint64 ||
-		t.Kind() == reflect.Float32 || t.Kind() == reflect.Float64
+		t.Kind() == reflect.Float32 || t.Kind() == reflect.Float64 || t.Kind() == reflect.Complex64 || t.Kind() == reflect.Complex128
 }
 
 // IsString return string
@@ -44,4 +44,12 @@ func VisitStruct(v reflect.Value, visitEmbedded bool, walk func(v reflect.Value,
 			VisitStruct(member, true, walk)
 		}
 	}
+}
+
+// UnderlyingInterface recursively return the underlying value if current value's Kind() == reflect.Interface
+func UnderlyingInterface(v reflect.Value) reflect.Value {
+	if v.Kind() == reflect.Interface {
+		return UnderlyingInterface(v.Elem())
+	}
+	return v
 }
