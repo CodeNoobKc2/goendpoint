@@ -21,7 +21,7 @@ func (b *Builder) AddConversion(conversion ...Conversion) *Builder {
 func (b Builder) Build() *Converter {
 	conversions := b.Conversions
 	if !b.discardDefault {
-		conversions = append(conversions, StrToNumber{}, NumberToNumber{}, PtrToPtr{}, MapToMap{}, ListLikeToListLike{}, JSONToStruct{}, ToInterface{})
+		conversions = append(conversions, StrToNumber{}, NumberToNumber{}, PtrToPtr{}, MapToMap{}, ListLikeToListLike{}, JSONToStruct{}, ConcreteToPtr{}, ToInterface{})
 	}
 
 	return &Converter{conversions: conversions}

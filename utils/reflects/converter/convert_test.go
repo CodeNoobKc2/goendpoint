@@ -21,6 +21,10 @@ func TestConvert(t *testing.T) {
 			expected: &i,
 		},
 		{
+			input:    s,
+			expected: &i,
+		},
+		{
 			input:    "1.321",
 			expected: float32(1.321),
 		},

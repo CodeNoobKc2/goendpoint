@@ -149,6 +149,27 @@ func (l ListLikeToListLike) ConvertValue(converter *Converter, vin, vout reflect
 	return nil
 }
 
+var _ Conversion = ConcreteToPtr{}
+
+type ConcreteToPtr struct{}
+
+func (c ConcreteToPtr) Accept(in, out reflect.Type) bool {
+	return in.Kind() != reflect.Ptr && out.Kind() == reflect.Ptr
+}
+
+func (c ConcreteToPtr) ConvertValue(converter *Converter, vin, vout reflect.Value) (err error) {
+	// do nothing, eg: str("") -> *int(nil)
+	if vin.IsZero() {
+		return nil
+	}
+
+	if vout.IsNil() {
+		vout.Set(reflect.New(vout.Type().Elem()))
+	}
+
+	return converter.ConvertValue(vin, vout.Elem())
+}
+
 var _ Conversion = PtrToPtr{}
 
 type PtrToPtr struct{}
