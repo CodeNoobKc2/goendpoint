@@ -6,13 +6,19 @@ import (
 )
 
 func TestConvert(t *testing.T) {
+	s := "1"
+	i := 1
 	testcases := []struct {
 		input    interface{}
 		expected interface{}
 	}{
 		{
-			input:    "1",
-			expected: 1,
+			input:    s,
+			expected: i,
+		},
+		{
+			input:    &s,
+			expected: &i,
 		},
 		{
 			input:    "1.321",
@@ -47,12 +53,22 @@ func TestConvert(t *testing.T) {
 			expected: map[int]float32{1: 1.1, 2: 1.2, 3: 1.3},
 		},
 		{
+			input:    map[interface{}][]interface{}{"1": {&s, &s}, "2": {&s, &s}},
+			expected: map[float32][]*int{1: {&i, &i}, 2: {&i, &i}},
+		},
+		{
 			input:    map[string]float32{"1": 1.1, "2": 1.2, "3": 1.3},
 			expected: map[interface{}]interface{}{"1": float32(1.1), "2": float32(1.2), "3": float32(1.3)},
 		},
+		{
+			input: RawJSON(`{"foo":"bar"}`),
+			expected: struct {
+				Foo string `json:"foo"`
+			}{Foo: "bar"},
+		},
 	}
 
-	converter := Converter{}
+	converter := Builder{}.Build()
 
 	for _, testcase := range testcases {
 		out := reflect.New(reflect.TypeOf(testcase.expected)).Interface()
