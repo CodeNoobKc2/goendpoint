@@ -5,8 +5,8 @@ import (
 	"reflect"
 )
 
-func ShouldBe(v reflect.Value, kind reflect.Kind) error {
-	if v.Kind() != kind {
+func ShouldBeKind(t reflect.Type, kind reflect.Kind) error {
+	if t.Kind() != kind {
 		return fmt.Errorf("kind should be %v", kind.String())
 	}
 	return nil
@@ -14,6 +14,10 @@ func ShouldBe(v reflect.Value, kind reflect.Kind) error {
 
 func Underlying(v reflect.Value, recursive bool) reflect.Value {
 	return v
+}
+
+func IsList(t reflect.Type) bool {
+	return t.Kind() == reflect.Slice || t.Kind() == reflect.Array
 }
 
 // IsNumber return number if true
@@ -31,6 +35,31 @@ func IsString(t reflect.Type) bool {
 // IsObject return ture on interface or struct
 func IsObject(t reflect.Type) bool {
 	return t.Kind() == reflect.Interface || t.Kind() == reflect.Struct
+}
+
+func GetStructMember(v reflect.Value, name string, visitEmbedded bool) (*reflect.Value, error) {
+	var embedded []reflect.Value
+	for i := 0; i < v.NumField(); i++ {
+		tfield := v.Type().Field(i)
+		vfield := v.Field(i)
+
+		if tfield.Name == name {
+			return &vfield, nil
+		}
+
+		if tfield.Anonymous && tfield.Type.Kind() == reflect.Struct && visitEmbedded {
+			embedded = append(embedded, vfield)
+		}
+	}
+
+	for _, value := range embedded {
+		vfield, _ := GetStructMember(value, name, true)
+		if vfield != nil {
+			return vfield, nil
+		}
+	}
+
+	return nil, fmt.Errorf("field '%v' not found", name)
 }
 
 // VisitStruct visit struct field may be recursively
