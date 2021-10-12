@@ -20,6 +20,10 @@ const (
 	hasHeaderTag = 1 << 3
 )
 
+type Binder interface {
+	Bind(req *http.Request, obj interface{}) error
+}
+
 type BinderBuilder struct {
 	// PathTag tag for path Key, default would be "path"
 	PathTag *string
