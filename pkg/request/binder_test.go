@@ -91,9 +91,9 @@ func TestBinding(t *testing.T) {
 
 	binderBuilder := &BinderBuilder{Converter: converter.Builder{}.Build()}
 	for idx, testcase := range testcases {
-		binder := binderBuilder.Build(testcase.pathTemplate)
+		binder := binderBuilder.Build()
 		clean := &testdata.BindObject{}
-		if err := binder.Bind(testcase.request(), clean); err != nil {
+		if err := binder.WithPath(testcase.pathTemplate)(testcase.request(), clean); err != nil {
 			t.Errorf("test case '%v' failed: %v", idx, err)
 			continue
 		}

@@ -21,7 +21,11 @@ const (
 )
 
 type Binder interface {
-	Bind(req *http.Request, obj interface{}) error
+	// Bind would fill in corresponding from user request to given struct
+	// obj should be a pointer to struct
+	Bind(req *http.Request, pathTemplate string, obj interface{}) error
+	// WithPath return he bindFunc for a specific path
+	WithPath(pathTemplate string) (bindFunc func(req *http.Request, obj interface{}) error)
 }
 
 type BinderBuilder struct {
@@ -37,15 +41,8 @@ type BinderBuilder struct {
 	Converter *converter.Converter
 }
 
-func (b *BinderBuilder) Build(pathTemplate string) *binder {
-	pathKeyToPos := make(map[string]int)
-	for idx, chunk := range strings.Split(strings.TrimPrefix(pathTemplate, "/"), "/") {
-		if strings.HasPrefix(chunk, "{") && strings.HasSuffix(chunk, "}") {
-			pathKeyToPos[chunk[1:len(chunk)-1]] = idx
-		}
-	}
-
-	return &binder{pathKeyToPos: pathKeyToPos, lock: &sync.RWMutex{}, parsedRequestObjects: map[string]ParsedRequestObject{}, BinderBuilder: b}
+func (b *BinderBuilder) Build() *binder {
+	return &binder{lock: &sync.RWMutex{}, parsedRequestObjects: map[string]ParsedRequestObject{}, BinderBuilder: b, parsedPath: map[string]PathTemplate{}}
 }
 
 func (b *BinderBuilder) GetQueryTag() string {
@@ -76,26 +73,40 @@ func (b *BinderBuilder) GetBodyTag() string {
 	return "body"
 }
 
+var _ Binder = binder{}
+
 type binder struct {
 	*BinderBuilder
 	lock                 *sync.RWMutex
 	parsedRequestObjects map[string]ParsedRequestObject
-	pathKeyToPos         map[string]int
+	parsedPath           map[string]PathTemplate
 }
 
-func (b binder) ParsePath(uri string) map[string][]string {
-	// todo: we need to validate whether uri match the pattern of pathTemplate
-	if len(b.pathKeyToPos) == 0 {
+func (b binder) ParsePathTemplate(template string) error {
+	var has bool
+	func() {
+		b.lock.RLock()
+		defer b.lock.RUnlock()
+
+		_, has = b.parsedPath[template]
+	}()
+
+	if has {
 		return nil
 	}
-	ret := make(map[string][]string)
-	splited := strings.Split(strings.TrimPrefix(uri, "/"), "/")
 
-	for key, i := range b.pathKeyToPos {
-		ret[key] = []string{splited[i]}
+	parsed, err := NewPathTemplate(template)
+	if err != nil {
+		return err
 	}
 
-	return ret
+	func() {
+		b.lock.Lock()
+		defer b.lock.Unlock()
+
+		b.parsedPath[template] = *parsed
+	}()
+	return nil
 }
 
 func (b binder) bindFromParsed(ctx BindContext, in string, m map[string][]string, to reflect.Value) error {
@@ -128,8 +139,25 @@ func (b binder) bindQuery(ctx BindContext, req *http.Request, to reflect.Value) 
 	return b.bindFromParsed(ctx, "query", req.URL.Query(), to)
 }
 
-func (b binder) bindPath(ctx BindContext, req *http.Request, to reflect.Value) error {
-	return b.bindFromParsed(ctx, "path", b.ParsePath(req.URL.Path), to)
+func (b binder) bindPath(ctx BindContext, pathTemplate string, req *http.Request, to reflect.Value) error {
+	if err := b.ParsePathTemplate(pathTemplate); err != nil {
+		return err
+	}
+
+	var tmpl PathTemplate
+	func() {
+		b.lock.RLock()
+		defer b.lock.RUnlock()
+
+		tmpl = b.parsedPath[pathTemplate]
+	}()
+
+	parsed, err := tmpl.Parse(req.URL.Path)
+	if err != nil {
+		return err
+	}
+
+	return b.bindFromParsed(ctx, "path", parsed, to)
 }
 
 func (b binder) bindBody(ctx BindContext, req *http.Request, to reflect.Value) error {
@@ -268,7 +296,7 @@ func (b binder) parseRequestObject(tobj reflect.Type, parsed *ParsedRequestObjec
 	return nil
 }
 
-func (b binder) bind(req *http.Request, obj reflect.Value) (err error) {
+func (b binder) bind(req *http.Request, pathTemplate string, obj reflect.Value) (err error) {
 	parsed := NewParsedRequestObject()
 	if err := b.parseRequestObject(obj.Type(), parsed); err != nil {
 		return err
@@ -291,7 +319,7 @@ func (b binder) bind(req *http.Request, obj reflect.Value) (err error) {
 				return err
 			}
 		case "path":
-			if err := b.bindPath(context, req, *field); err != nil {
+			if err := b.bindPath(context, pathTemplate, req, *field); err != nil {
 				return err
 			}
 		case "body":
@@ -306,9 +334,7 @@ func (b binder) bind(req *http.Request, obj reflect.Value) (err error) {
 	return nil
 }
 
-// Bind would fill in corresponding from user request to given struct
-// obj should be a pointer to struct
-func (b binder) Bind(req *http.Request, obj interface{}) error {
+func (b binder) Bind(req *http.Request, pathTemplate string, obj interface{}) error {
 	v := reflect.ValueOf(obj)
 	if err := reflects.ShouldBeKind(v.Type(), reflect.Ptr); err != nil {
 		return err
@@ -318,5 +344,12 @@ func (b binder) Bind(req *http.Request, obj interface{}) error {
 		return err
 	}
 
-	return b.bind(req, v.Elem())
+	return b.bind(req, pathTemplate, v.Elem())
+}
+
+func (b binder) WithPath(pathTemplate string) (bindFunc func(req *http.Request, obj interface{}) error) {
+	bindFunc = func(req *http.Request, obj interface{}) error {
+		return b.Bind(req, pathTemplate, obj)
+	}
+	return
 }
