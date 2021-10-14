@@ -46,3 +46,8 @@ type Response struct {
 	ConflictBody *SuccessResponseBody `body:"json"`
 	ErrMsg       error                `body:"text"`
 }
+
+type WrongResponse struct {
+	Header string
+	Body   string `body:"json"`
+}

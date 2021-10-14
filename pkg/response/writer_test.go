@@ -16,7 +16,7 @@ func TestResponseWriter(t *testing.T) {
 	)
 
 	testcases := []struct {
-		input            testdata.Response
+		input            interface{}
 		expectedResponse testdata.MockResponseWriter
 	}{
 		{
@@ -111,6 +111,16 @@ func TestResponseWriter(t *testing.T) {
 				StatusCode: 500,
 			},
 		},
+		{
+			input: testdata.WrongResponse{},
+			expectedResponse: testdata.MockResponseWriter{
+				HttpHeader: http.Header{
+					headerContentType: []string{textPlain},
+				},
+				Body:       "response object field 'Header' underterminted body or header",
+				StatusCode: 500,
+			},
+		},
 	}
 
 	writer := WriterBuilder{}.Build()
@@ -123,4 +133,5 @@ func TestResponseWriter(t *testing.T) {
 			continue
 		}
 	}
+
 }

@@ -157,6 +157,10 @@ func (w *writer) parseField(tfield reflect.StructField) (*ParsedField, error) {
 		return nil, fmt.Errorf("response object field '%v' has both body tag and header tag", tfield.Name)
 	}
 
+	if !inBody && !inHeader {
+		return nil, fmt.Errorf("response object field '%v' underterminted body or header", tfield.Name)
+	}
+
 	// get code
 	code := w.defaultNonErrHttpStatusCode
 	if strCode := tfield.Tag.Get(w.codeTag); len(strCode) != 0 {
