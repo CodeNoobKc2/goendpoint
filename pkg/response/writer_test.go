@@ -121,6 +121,36 @@ func TestResponseWriter(t *testing.T) {
 				StatusCode: 500,
 			},
 		},
+		{
+			input: struct {
+				Header string `header:"X-Header"`
+			}{
+				Header: "foo",
+			},
+			expectedResponse: testdata.MockResponseWriter{
+				HttpHeader: http.Header{
+					"X-Header": []string{"foo"},
+				},
+				StatusCode: 200,
+			},
+		},
+		{
+			input: struct {
+				Token string `header:"X-Token"`
+				Text  string `body:"text"`
+			}{
+				Token: "foo",
+				Text:  "text",
+			},
+			expectedResponse: testdata.MockResponseWriter{
+				HttpHeader: http.Header{
+					headerContentType: []string{textPlain},
+					"X-Token":         []string{"foo"},
+				},
+				Body:       `text`,
+				StatusCode: 200,
+			},
+		},
 	}
 
 	writer := WriterBuilder{}.Build()

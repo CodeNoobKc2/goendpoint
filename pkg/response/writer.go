@@ -193,8 +193,8 @@ func (w *writer) parseField(tfield reflect.StructField) (*ParsedField, error) {
 		parsedField.ContentType = &contentType
 	case inHeader:
 		// TODO: support multiple type
-		if tfield.Type.String() != "*string" {
-			return nil, fmt.Errorf("response object header field '%v' should be type *string", tfield.Name)
+		if tfield.Type.String() != "*string" && tfield.Type.String() != "string" {
+			return nil, fmt.Errorf("response object header field '%v' should be type *string or string", tfield.Name)
 		}
 
 		if len(headerKey) == 0 {
@@ -244,7 +244,8 @@ func (w writer) doParseResp(response reflect.Type) (*ParsedResponse, error) {
 }
 
 func (w *writer) parseResponse(response reflect.Type, out *ParsedResponse) error {
-	ref := response.PkgPath() + "." + response.Name()
+	ref := reflects.RepresentType(response)
+
 	has := false
 
 	func() {
@@ -373,8 +374,12 @@ func (w writer) doWriteResponse(writer http.ResponseWriter, ctx *writeContext) e
 			writer.Header().Set(headerContentType, fullContentType)
 			writer.Write(raw)
 		case "header":
-			pstr := val.(*string)
-			writer.Header().Set(keyOrContentType, *pstr)
+			pstr, ok := val.(*string)
+			if ok {
+				writer.Header().Set(keyOrContentType, *pstr)
+			} else {
+				writer.Header().Set(keyOrContentType, val.(string))
+			}
 		}
 	}
 
