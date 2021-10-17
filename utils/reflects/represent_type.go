@@ -3,6 +3,7 @@ package reflects
 import (
 	"reflect"
 	"strconv"
+	"strings"
 )
 
 // RepresentType returns the representation of type
@@ -18,6 +19,10 @@ import (
 // interface would be interface { [signatures] }
 func RepresentType(t reflect.Type) string {
 	// todo: implement naming for channel,function,unnamed type,interface
+	if t.PkgPath() != "" {
+		return t.PkgPath() + "." + t.Name()
+	}
+
 	switch {
 	case t.Kind() == reflect.Ptr:
 		return "*" + RepresentType(t.Elem())
@@ -27,12 +32,29 @@ func RepresentType(t reflect.Type) string {
 		return "[]" + RepresentType(t.Elem())
 	case t.Kind() == reflect.Array:
 		return "[" + strconv.FormatInt(int64(t.Len()), 10) + "]" + RepresentType(t.Elem())
-	}
-
-	if t.PkgPath() == "" {
+	case t.Kind() == reflect.Struct:
+		builder := strings.Builder{}
+		builder.WriteString("struct { ")
+		for i := 0; i < t.NumField(); i++ {
+			f := t.Field(i)
+			builder.WriteString(f.Name)
+			builder.WriteString(" ")
+			builder.WriteString(RepresentType(f.Type))
+			builder.WriteString(" ")
+			if len(f.Tag) != 0 {
+				builder.WriteString("\"")
+				builder.WriteString(strings.ReplaceAll(string(f.Tag), "\"", "\\\""))
+				builder.WriteString("\"")
+			}
+			if i != t.NumField()-1 {
+				builder.WriteString("; ")
+			}
+		}
+		builder.WriteString("}")
+		return builder.String()
+	default:
 		return t.String()
 	}
-	return t.PkgPath() + "." + t.Name()
 }
 
 func IsEmptyInterface(t reflect.Type) bool {

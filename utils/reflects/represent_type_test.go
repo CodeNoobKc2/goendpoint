@@ -4,10 +4,10 @@ import (
 	"reflect"
 	"testing"
 
-	"github.com/CodeNoobKc2/goendpoint/utils/reflects/converter"
+	"github.com/CodeNoobKc2/goendpoint/pkg/swagger"
 )
 
-const expectedConverterRepresent = "github.com/CodeNoobKc2/goendpoint/utils/reflects/converter.Converter"
+const expectedConverterRepresent = "github.com/CodeNoobKc2/goendpoint/pkg/swagger.Schema"
 
 func TestRepresentType(t *testing.T) {
 	testcases := []struct {
@@ -31,23 +31,39 @@ func TestRepresentType(t *testing.T) {
 			expected: "map[string]int",
 		},
 		{
-			input:    map[string]converter.Converter{},
+			input: struct {
+				Foo   string `foo:"t"`
+				Bar   []int  `bar:"b"`
+				Hello int
+			}{},
+			expected: "struct { Foo string \"foo:\\\"t\\\"\"; Bar []int \"bar:\\\"b\\\"\"; Hello int }",
+		},
+		{
+			input: struct {
+				Foo         string `foo:"t"`
+				Complicated swagger.Schema
+				Bar         []int `bar:"b"`
+			}{},
+			expected: "struct { Foo string \"foo:\\\"t\\\"\"; Complicated github.com/CodeNoobKc2/goendpoint/pkg/swagger.Schema ; Bar []int \"bar:\\\"b\\\"\"}",
+		},
+		{
+			input:    map[string]swagger.Schema{},
 			expected: "map[string]" + expectedConverterRepresent,
 		},
 		{
-			input:    map[string]*converter.Converter{},
+			input:    map[string]*swagger.Schema{},
 			expected: "map[string]*" + expectedConverterRepresent,
 		},
 		{
-			input:    [2]*converter.Converter{},
+			input:    [2]*swagger.Schema{},
 			expected: "[2]*" + expectedConverterRepresent,
 		},
 		{
-			input:    converter.Converter{},
+			input:    swagger.Schema{},
 			expected: expectedConverterRepresent,
 		},
 		{
-			input:    &converter.Converter{},
+			input:    &swagger.Schema{},
 			expected: "*" + expectedConverterRepresent,
 		},
 	}
