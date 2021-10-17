@@ -1,7 +1,6 @@
 package request
 
 import (
-	"bytes"
 	"net/http"
 	"net/url"
 	"reflect"
@@ -77,29 +76,45 @@ func TestBinding(t *testing.T) {
 		{
 			pathTemplate: "/foo",
 			request: func() *http.Request {
-				req, _ := http.NewRequest("POST", "/foo/bar", bytes.NewBuffer([]byte(`{"foo":"foo","bar":"bar"}`)))
+				req, _ := http.NewRequest("GET", "/foo", nil)
+				url := url.Values{
+					"q": []string{"foo"},
+				}
+				req.URL.RawQuery = url.Encode()
 				return req
 			},
-			expected: testdata.BindObject{
-				RequestBody: testdata.RequestBody{
-					Foo: "foo",
-					Bar: "bar",
-				},
+			expected: struct {
+				Query string `query:"q"`
+			}{
+				Query: "foo",
+			},
+		},
+		{
+			pathTemplate: "/foo/{int}",
+			request: func() *http.Request {
+				req, _ := http.NewRequest("GET", "/foo/1", nil)
+				return req
+			},
+			expected: struct {
+				Int int `path:"int"`
+			}{
+				Int: 1,
 			},
 		},
 	}
 
 	binderBuilder := &BinderBuilder{Converter: converter.Builder{}.Build()}
+	binder := binderBuilder.Build()
+
 	for idx, testcase := range testcases {
-		binder := binderBuilder.Build()
-		clean := &testdata.BindObject{}
-		if err := binder.WithPath(testcase.pathTemplate)(testcase.request(), clean); err != nil {
+		out := reflect.New(reflect.TypeOf(testcase.expected))
+		if err := binder.WithPath(testcase.pathTemplate)(testcase.request(), out.Interface()); err != nil {
 			t.Errorf("test case '%v' failed: %v", idx, err)
 			continue
 		}
 
-		if !reflect.DeepEqual(*clean, testcase.expected) {
-			t.Errorf("test case '%v' failed: expected %v;computed %v", idx, testcase.expected, *clean)
+		if !reflect.DeepEqual(out.Elem().Interface(), testcase.expected) {
+			t.Errorf("test case '%v' failed: expected %v;computed %v", idx, testcase.expected, out.Elem().Interface())
 			continue
 		}
 	}

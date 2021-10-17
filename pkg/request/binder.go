@@ -188,7 +188,8 @@ func (b binder) bindBody(ctx BindContext, req *http.Request, to reflect.Value) e
 
 func (b binder) parseRequestObject(tobj reflect.Type, parsed *ParsedRequestObject) error {
 	var has bool
-	ref := tobj.PkgPath() + "." + tobj.Name()
+	ref := reflects.RepresentType(tobj)
+
 	func() {
 		b.lock.RLock()
 		defer b.lock.RUnlock()
